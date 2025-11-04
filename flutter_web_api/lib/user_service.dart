@@ -5,27 +5,27 @@ import 'model.dart';
 class UserService {
   final String baseUrl = "https://localhost:7152/api/User";
 
-  /// Sends user registration data as JSON and returns server response.
-Future<void> registerUser(User user) async {
-  try {
-    await Future.sync(() async {
-      print("It blocked before parse");
+  Future<List<String>> registerUser(User user) async {
+    try {
       final response = await http.post(
-        
         Uri.parse("$baseUrl/register"),
-        
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(user.toJson()),
       );
-      print("It blocked after parse");
+
       if (response.statusCode >= 200 && response.statusCode <= 299) {
-        print("✅ Success: ${response.body}");
+        // ✅ Success: no errors
+        return [];
       } else {
         print("❌ Error: ${response.statusCode}, ${response.body}");
+
+        // Decode as list of errors
+        final List<dynamic> body = jsonDecode(response.body);
+        return body.map((e) => e.toString()).toList();
       }
-    });
-  } catch (e) {
-    print("🚨 Exception: $e");
+    } catch (e) {
+      print("🚨 Exception: $e");
+      return ["Exception occurred: $e"];
+    }
   }
-}
 }

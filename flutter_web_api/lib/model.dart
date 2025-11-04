@@ -28,7 +28,7 @@ factory User.fromJson(Map<String, dynamic> json) {
 
 
 Map<String, dynamic> toJson() => {
-  "mail": email,       
+  "Email": email,       
   "name": name,
   "password": password,
   "phoneNumber": phoneNumber,

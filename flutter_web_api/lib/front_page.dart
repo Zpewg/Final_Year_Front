@@ -8,20 +8,26 @@ class FrontPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    // Gradient adapts to theme
+    final gradientColors = isDark
+        ? [theme.scaffoldBackgroundColor, theme.cardColor]
+        : [theme.scaffoldBackgroundColor.withOpacity(0.9), theme.scaffoldBackgroundColor];
 
     return Scaffold(
       appBar: AppBar(
         title: const Text("Task Management"),
         centerTitle: true,
+        elevation: 0,
+        backgroundColor: theme.appBarTheme.backgroundColor,
+        foregroundColor: theme.appBarTheme.foregroundColor,
       ),
       body: Container(
         width: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              theme.colorScheme.primary.withOpacity(0.7),
-              theme.colorScheme.primary,
-            ],
+            colors: gradientColors,
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -39,23 +45,27 @@ class FrontPage extends StatelessWidget {
                     child: SvgPicture.asset(
                       "assets/undraw_to-do-list_o3jf.svg",
                       fit: BoxFit.contain,
+                      // Keep SVG original colors
                     ),
                   ),
                   const SizedBox(height: 40),
 
+                  // Title
                   Text(
                     "Task Management",
                     style: theme.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: Colors.black,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     "Stay organized, stay productive",
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.white70,
+                      color: (Colors.black ),
+                          fontWeight: FontWeight.bold,
                     ),
+
                   ),
 
                   const SizedBox(height: 60),
@@ -67,20 +77,14 @@ class FrontPage extends StatelessWidget {
                       onPressed: () {
                         // TODO: Navigate to Login View
                       },
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        elevation: 4,
-                        backgroundColor: Colors.white,
-                      ),
+                      style: theme.elevatedButtonTheme.style,
                       child: Text(
                         "Log In",
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: theme.colorScheme.primary,
+                        style: theme.textTheme.bodyLarge?.copyWith(
                           fontWeight: FontWeight.w600,
+                          fontSize: 18,
+                          color: theme.elevatedButtonTheme.style?.foregroundColor?.resolve({}) ??
+                              theme.colorScheme.onPrimary,
                         ),
                       ),
                     ),
@@ -98,19 +102,14 @@ class FrontPage extends StatelessWidget {
                           MaterialPageRoute(builder: (_) => const SignUpView()),
                         );
                       },
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.white, width: 2),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: const Text(
+                      style: theme.outlinedButtonTheme.style,
+                      child: Text(
                         "Sign Up",
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.white,
+                        style: theme.textTheme.bodyLarge?.copyWith(
                           fontWeight: FontWeight.w600,
+                          fontSize: 18,
+                          color: theme.outlinedButtonTheme.style?.foregroundColor?.resolve({}) ??
+                              theme.colorScheme.primary,
                         ),
                       ),
                     ),
