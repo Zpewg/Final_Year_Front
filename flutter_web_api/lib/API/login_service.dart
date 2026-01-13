@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'login_model.dart';
-import 'model.dart';
+import '../model/login_model.dart';
+import '../model/model.dart';
 
 class LoginService {
   final String baseUrl = "https://localhost:7152/api/LogIn";

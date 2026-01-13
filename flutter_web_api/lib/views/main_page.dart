@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_web_api/api_handler.dart';
-import 'package:flutter_web_api/model.dart';
+import 'package:flutter_web_api/API/api_handler.dart';
+import 'package:flutter_web_api/model/model.dart';
 
 
 class MainPage extends StatefulWidget {

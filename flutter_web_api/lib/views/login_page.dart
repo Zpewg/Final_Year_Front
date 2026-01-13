@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
-import 'login_model.dart';
-import 'login_service.dart';
-import 'model.dart'; // Imports User class
-import 'verification_model.dart'; // Imports VerifyMessage class
-import 'verify_message_service.dart'; // Imports VerifyService class
-import 'theme_controller.dart'; 
+import '../model/login_model.dart';
+import '../API/login_service.dart';
+import '../model/model.dart'; // Imports User class
+import '../model/verification_model.dart'; // Imports VerifyMessage class
+import '../API/verify_message_service.dart'; // Imports VerifyService class
+import '../theme/theme_controller.dart';
 import 'user_page.dart';
 
-
-import 'new_password_from_user_model.dart'; 
-import 'change_password.dart';
+import '../model/new_password_from_user_model.dart';
+import '../API/change_password.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -28,8 +27,9 @@ class _LoginPageState extends State<LoginPage> {
 
   // Services
   final LoginService _loginService = LoginService();
-  final VerifyService _verifyService = VerifyService(); 
-  final ChangePasswordService _changePassService = ChangePasswordService(); // New Service
+  final VerifyService _verifyService = VerifyService();
+  final ChangePasswordService _changePassService =
+      ChangePasswordService(); // New Service
 
   @override
   void dispose() {
@@ -64,9 +64,7 @@ class _LoginPageState extends State<LoginPage> {
           if (mounted) {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(
-                builder: (context) => UserPage(user: user),
-              ),
+              MaterialPageRoute(builder: (context) => UserPage(user: user)),
             );
           }
         } else {
@@ -86,9 +84,9 @@ class _LoginPageState extends State<LoginPage> {
       setState(() => _isLoading = false);
       print("🚨 Login exception: $e");
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Login failed: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Login failed: $e")));
       }
     }
   }
@@ -98,7 +96,7 @@ class _LoginPageState extends State<LoginPage> {
   // ==========================================
   void _showVerificationDialog(BuildContext context, String userMail) {
     final codeController = TextEditingController();
-    
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -108,7 +106,9 @@ class _LoginPageState extends State<LoginPage> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text("Your account is inactive. Please enter the verification code."),
+              const Text(
+                "Your account is inactive. Please enter the verification code.",
+              ),
               const SizedBox(height: 16),
               TextField(
                 controller: codeController,
@@ -154,7 +154,7 @@ class _LoginPageState extends State<LoginPage> {
   // ==========================================
   // FORGOT PASSWORD FLOW
   // ==========================================
-  
+
   void _startForgotPasswordFlow() {
     _showEmailDialog();
   }
@@ -162,7 +162,7 @@ class _LoginPageState extends State<LoginPage> {
   // STEP 1: Insert Email
   void _showEmailDialog() {
     final emailInputController = TextEditingController();
-    
+
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -171,38 +171,42 @@ class _LoginPageState extends State<LoginPage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-             const Text("Please enter your email address to receive a verification code."),
-             const SizedBox(height: 10),
-             TextField(
-               controller: emailInputController,
-               decoration: const InputDecoration(labelText: "Email"),
-               keyboardType: TextInputType.emailAddress,
-             )
+            const Text(
+              "Please enter your email address to receive a verification code.",
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: emailInputController,
+              decoration: const InputDecoration(labelText: "Email"),
+              keyboardType: TextInputType.emailAddress,
+            ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () async {
-               final mail = emailInputController.text.trim();
-               if(mail.isEmpty) return;
+              final mail = emailInputController.text.trim();
+              if (mail.isEmpty) return;
 
-               Navigator.pop(context); // Close dialog
-               setState(() => _isLoading = true); // Show loading on main screen
-               
-               bool success = await _changePassService.checkMailExist(mail);
-               
-               setState(() => _isLoading = false);
+              Navigator.pop(context); // Close dialog
+              setState(() => _isLoading = true); // Show loading on main screen
 
-               if (success && mounted) {
-                 _showCodeDialog(mail); // Go to Step 2
-               } else if (mounted) {
-                 ScaffoldMessenger.of(context).showSnackBar(
-                   const SnackBar(content: Text("Email not found or error occurred."))
-                 );
-               }
+              bool success = await _changePassService.checkMailExist(mail);
+
+              setState(() => _isLoading = false);
+
+              if (success && mounted) {
+                _showCodeDialog(mail); // Go to Step 2
+              } else if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Email not found or error occurred."),
+                  ),
+                );
+              }
             },
             child: const Text("Send Code"),
-          )
+          ),
         ],
       ),
     );
@@ -220,12 +224,12 @@ class _LoginPageState extends State<LoginPage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-             Text("Code sent to $mail"),
-             const SizedBox(height: 10),
-             TextField(
-               controller: codeInputController,
-               decoration: const InputDecoration(labelText: "Enter Code"),
-             )
+            Text("Code sent to $mail"),
+            const SizedBox(height: 10),
+            TextField(
+              controller: codeInputController,
+              decoration: const InputDecoration(labelText: "Enter Code"),
+            ),
           ],
         ),
         actions: [
@@ -235,33 +239,31 @@ class _LoginPageState extends State<LoginPage> {
           ),
           ElevatedButton(
             onPressed: () async {
-               final code = codeInputController.text.trim();
-               if(code.isEmpty) return;
+              final code = codeInputController.text.trim();
+              if (code.isEmpty) return;
 
-               Navigator.pop(context); 
-               setState(() => _isLoading = true);
+              Navigator.pop(context);
+              setState(() => _isLoading = true);
 
-               final model = VerifyMessage(message: code, userMail: mail);
-               bool success = await _changePassService.checkCodeExist(model);
+              final model = VerifyMessage(message: code, userMail: mail);
+              bool success = await _changePassService.checkCodeExist(model);
 
-               setState(() => _isLoading = false);
+              setState(() => _isLoading = false);
 
-               if (success && mounted) {
-                 _showNewPasswordDialog(mail); // Go to Step 3
-               } else if (mounted) {
-                 ScaffoldMessenger.of(context).showSnackBar(
-                   const SnackBar(content: Text("Invalid Code."))
-                 );
-               }
+              if (success && mounted) {
+                _showNewPasswordDialog(mail); // Go to Step 3
+              } else if (mounted) {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text("Invalid Code.")));
+              }
             },
             child: const Text("Verify"),
-          )
+          ),
         ],
       ),
     );
   }
-
-  
 
   void _showNewPasswordDialog(String mail) {
     final newPassController = TextEditingController();
@@ -275,54 +277,61 @@ class _LoginPageState extends State<LoginPage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-             const Text("Please enter your new password."),
-             const SizedBox(height: 10),
-             TextField(
-               controller: newPassController,
-               decoration: const InputDecoration(labelText: "New Password"),
-               obscureText: true,
-             )
+            const Text("Please enter your new password."),
+            const SizedBox(height: 10),
+            TextField(
+              controller: newPassController,
+              decoration: const InputDecoration(labelText: "New Password"),
+              obscureText: true,
+            ),
           ],
         ),
         actions: [
-           TextButton(
+          TextButton(
             // FIX: Use dialogContext to close the dialog
-            onPressed: () => Navigator.pop(dialogContext), 
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text("Cancel"),
           ),
           ElevatedButton(
             onPressed: () async {
-               final pass = newPassController.text;
-               if(pass.isEmpty) return;
+              final pass = newPassController.text;
+              if (pass.isEmpty) return;
 
-               // FIX: Pop using the dialog's context
-               Navigator.pop(dialogContext);
-               
-               // Use the main class setState
-               setState(() => _isLoading = true);
+              // FIX: Pop using the dialog's context
+              Navigator.pop(dialogContext);
 
-               // Ensure your model matches the one expected by the service
-               final model = NewPasswordFromUser(userEmail: mail, newPassword: pass);
-               
-               // Call the service
-               bool success = await _changePassService.changePassword(model);
+              // Use the main class setState
+              setState(() => _isLoading = true);
 
-               setState(() => _isLoading = false);
+              // Ensure your model matches the one expected by the service
+              final model = NewPasswordFromUser(
+                userEmail: mail,
+                newPassword: pass,
+              );
 
-               // FIX: Check 'mounted' to ensure LoginPage is still there
-               if (success && mounted) {
-                 // FIX: Use 'context' (from LoginPage), NOT 'dialogContext'
-                 ScaffoldMessenger.of(context).showSnackBar(
-                   const SnackBar(content: Text("Password changed successfully! Please log in."))
-                 );
-               } else if (mounted) {
-                 ScaffoldMessenger.of(context).showSnackBar(
-                   const SnackBar(content: Text("Failed to change password."))
-                 );
-               }
+              // Call the service
+              bool success = await _changePassService.changePassword(model);
+
+              setState(() => _isLoading = false);
+
+              // FIX: Check 'mounted' to ensure LoginPage is still there
+              if (success && mounted) {
+                // FIX: Use 'context' (from LoginPage), NOT 'dialogContext'
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      "Password changed successfully! Please log in.",
+                    ),
+                  ),
+                );
+              } else if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Failed to change password.")),
+                );
+              }
             },
             child: const Text("Change Password"),
-          )
+          ),
         ],
       ),
     );
@@ -340,7 +349,7 @@ class _LoginPageState extends State<LoginPage> {
         ? [theme.scaffoldBackgroundColor, theme.cardColor]
         : [
             theme.scaffoldBackgroundColor.withOpacity(0.9),
-            theme.scaffoldBackgroundColor
+            theme.scaffoldBackgroundColor,
           ];
 
     return Scaffold(
@@ -350,6 +359,15 @@ class _LoginPageState extends State<LoginPage> {
         elevation: 0,
         backgroundColor: theme.appBarTheme.backgroundColor,
         foregroundColor: theme.appBarTheme.foregroundColor,
+        // --- ADDED BACK BUTTON HERE ---
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            // This goes back to the previous screen (FrontPage)
+            Navigator.pop(context);
+          },
+        ),
+        // -----------------------------
         actions: [
           IconButton(
             icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
@@ -386,7 +404,9 @@ class _LoginPageState extends State<LoginPage> {
                     Text(
                       "Log in to your account",
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.textTheme.bodyMedium?.color?.withOpacity(0.8),
+                        color: theme.textTheme.bodyMedium?.color?.withOpacity(
+                          0.8,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 40),
@@ -464,9 +484,9 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                       ),
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     // FORGOT PASSWORD BUTTON (CONNECTED TO FLOW)
                     TextButton(
                       onPressed: _isLoading ? null : _startForgotPasswordFlow,

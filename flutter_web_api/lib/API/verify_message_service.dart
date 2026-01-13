@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:flutter_web_api/verification_model.dart';
+import 'package:flutter_web_api/model/verification_model.dart';
 import 'package:http/http.dart' as http;
 
 

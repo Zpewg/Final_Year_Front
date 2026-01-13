@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:flutter_web_api/model.dart';
+import 'package:flutter_web_api/model/model.dart';
 import 'package:http/http.dart'as http;
 
 class ApiHandler{

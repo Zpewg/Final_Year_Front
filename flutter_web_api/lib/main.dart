@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'theme_controller.dart';
-import 'front_page.dart';
+import 'theme/theme_controller.dart';
+import 'views/front_page.dart';
 
 void main() {
   runApp(const MyApp());

@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'package:flutter_web_api/verification_model.dart';
+import 'package:flutter_web_api/model/verification_model.dart';
 import 'package:http/http.dart' as http;
-import 'new_password_from_user_model.dart'; 
+import '../model/new_password_from_user_model.dart'; 
 
 class ChangePasswordService {
   final String baseUrl = "https://localhost:7152/api/ChangePassword";

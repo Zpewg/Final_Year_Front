@@ -2,6 +2,7 @@
 
 class User{
   
+  final int id;
 
   final String email;
 
@@ -16,6 +17,7 @@ class User{
  
 
   const User({
+    this.id =0,
     required this.name,
     required this.email,
     required this.password,
@@ -27,6 +29,7 @@ class User{
 
 factory User.fromJson(Map<String, dynamic> json) {
   return User(
+    id: (json['id'] ?? json['Id'] ?? json['UserId'] ?? 0) as int,
     email: json['email'] as String,
     name: json['name'] as String,
     password: json['password'] as String,

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'model.dart';
-import 'user_service.dart';
-import 'password_field_with_rules.dart';
-import 'verify_message_service.dart';
-import 'verification_model.dart';
+import '../model/model.dart';
+import '../API/user_service.dart';
+import '../password_rules/password_field_with_rules.dart';
+import '../API/verify_message_service.dart';
+import '../model/verification_model.dart';
 
 
 class SignUpView extends StatefulWidget {
