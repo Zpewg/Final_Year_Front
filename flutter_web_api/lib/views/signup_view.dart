@@ -5,6 +5,7 @@ import 'password_field_with_rules.dart';
 import 'verify_message_service.dart';
 import 'verification_model.dart';
 
+
 class SignUpView extends StatefulWidget {
   const SignUpView({super.key});
 
@@ -32,7 +33,7 @@ class _SignUpViewState extends State<SignUpView> {
 
     return showDialog<String>(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
           backgroundColor: theme.colorScheme.surface,
           title: Text(
@@ -60,7 +61,9 @@ class _SignUpViewState extends State<SignUpView> {
                 "Cancel",
                 style: TextStyle(color: theme.colorScheme.error),
               ),
-              onPressed: () => Navigator.pop(context, null),
+              onPressed: () { Navigator.pop(dialogContext);
+              Navigator.pop(context);
+              },
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -122,6 +125,7 @@ Widget build(BuildContext context) {
                     email: _emailController.text.trim(),
                     password: _passwordController.text,
                     phoneNumber: _phoneController.text.trim(),
+                    active: false,
                   );
 
                   final result = await _userService.registerUser(user);
@@ -133,7 +137,7 @@ Widget build(BuildContext context) {
                     final code = await _showVerificationDialog(context);
 
                     if (code != null && code.isNotEmpty) {
-                      final verifyMessage = VerifyMessage(message: code);
+                      final verifyMessage = VerifyMessage(message: code, userMail: _emailController.text.trim());
                       await _verifyService.registerMessage(verifyMessage);
 
                       if (mounted) {

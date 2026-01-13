@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'signup_view.dart';
+import 'login_page.dart';
 
 class FrontPage extends StatelessWidget {
   const FrontPage({super.key});
@@ -75,7 +76,10 @@ class FrontPage extends StatelessWidget {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () {
-                        // TODO: Navigate to Login View
+                          Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const LoginPage()),
+                        );
                       },
                       style: theme.elevatedButtonTheme.style,
                       child: Text(

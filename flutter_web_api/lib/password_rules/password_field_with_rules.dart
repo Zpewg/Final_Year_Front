@@ -19,6 +19,7 @@ class _PasswordFieldWithRulesState extends State<PasswordFieldWithRules> {
   bool hasLowercase = false;
   bool hasSpecialChar = false;
   bool hasValidLength = false;
+  bool hasANumber = false;
 
   void _checkPassword(String password) {
     setState(() {
@@ -26,6 +27,7 @@ class _PasswordFieldWithRulesState extends State<PasswordFieldWithRules> {
       hasLowercase = password.contains(RegExp(r'[a-z]'));
       hasSpecialChar = password.contains(RegExp(r'[!@#\$%^&*(),.?":{}|<>]'));
       hasValidLength = password.length >= 8 && password.length <= 16;
+      hasANumber = password.contains(RegExp(r'[0-9]'));
     });
   }
 
@@ -82,6 +84,7 @@ class _PasswordFieldWithRulesState extends State<PasswordFieldWithRules> {
         _buildRequirement(hasLowercase, "At least one lowercase letter"),
         _buildRequirement(hasUppercase, "At least one uppercase letter"),
         _buildRequirement(hasSpecialChar, "At least one special character"),
+        _buildRequirement(hasANumber, "At least a digit"),
       ],
     );
   }

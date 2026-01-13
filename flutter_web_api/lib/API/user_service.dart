@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'model.dart';
 
 class UserService {
-  final String baseUrl = "https://localhost:7152/api/User";
+  final String baseUrl = "https://localhost:7152/api/UserDTO";
 
   Future<List<String>> registerUser(User user) async {
     try {
