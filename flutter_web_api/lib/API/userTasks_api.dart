@@ -54,4 +54,43 @@ class UserTasksService {
       return []; // Return empty list on exception
     }
   }
+  Future<bool> deleteUserTask(UserTasks task) async {
+    try {
+      final response = await http.post(
+        Uri.parse("$baseUrl/delete"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(task.toJson()),
+      );
+
+      if (response.statusCode >= 200 && response.statusCode <= 299) {
+        return true; // ✅ Success
+      } else {
+        print("❌ Error deleting task: ${response.statusCode}");
+        return false;
+      }
+    } catch (e) {
+      print("🚨 Exception deleting task: $e");
+      return false;
+    }
+  }
+
+  Future<bool> updateUserTask(UserTasks task) async {
+    try {
+      final response = await http.post(
+        Uri.parse("$baseUrl/update"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(task.toJson()),
+      );
+
+      if (response.statusCode >= 200 && response.statusCode <= 299) {
+        return true; // ✅ Succes
+      } else {
+        print("❌ Error updating task: ${response.statusCode}");
+        return false;
+      }
+    } catch (e) {
+      print("🚨 Exception updating task: $e");
+      return false;
+    }
+  }
 }

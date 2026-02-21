@@ -1,21 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_web_api/API/userTasks_api.dart';
+import 'package:table_calendar/table_calendar.dart';
 import '../model/model.dart';
-import '../model/user_task_model.dart'; // Ensure this imports your UserTasks class
+import '../model/user_task_model.dart';
+import '../model/journal_model.dart';
 import '../theme/theme_controller.dart';
 import 'login_page.dart';
 
+// Make sure these imports match your actual file paths
+import '../API/userTasks_api.dart'; 
+import '../API/journal_service.dart';
+
 class UserPage extends StatefulWidget {
   final User user;
-  
-  // These are initial lists (optional)
-  final List<UserTasks> initialUserTasks; // Changed to List<UserTasks>
+  final List<UserTasks> initialUserTasks;
+  final List<Journal> initialJournals; 
   final List<String> nearbyActivities;
 
   const UserPage({
-    super.key, 
+    super.key,
     required this.user,
-    this.initialUserTasks = const [], 
+    this.initialUserTasks = const [],
+    this.initialJournals = const [],   
     this.nearbyActivities = const [],
   });
 
@@ -24,26 +29,87 @@ class UserPage extends StatefulWidget {
 }
 
 class _UserPageState extends State<UserPage> {
-  // Local state to manage the list in real-time
   late List<UserTasks> _myTasks;
+  late List<Journal> _journals; 
+  bool _isLoading = true; // Set to true initially
+
   final UserTasksService _userService = UserTasksService();
+  final JournalService _journalService = JournalService(); 
+
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
 
   @override
   void initState() {
     super.initState();
-    // Initialize local list with passed data
     _myTasks = List.from(widget.initialUserTasks);
+    _journals = List.from(widget.initialJournals); 
+    
+    // ✅ MUST CALL FETCH DATA HERE
+    _fetchData(); 
   }
 
-  // ==========================================
-  // SHOW ADD TASK DIALOG
-  // ==========================================
-  void _showAddTaskDialog() {
-    final nameController = TextEditingController();
-    final descController = TextEditingController();
-    
-    DateTime? selectedDate;
-    TimeOfDay? selectedTime;
+  // ✅ FETCH DATA USING YOUR METHODS
+  Future<void> _fetchData() async {
+    final tasks = await _userService.getUserTasks(widget.user.id);
+    final journals = await _journalService.getJournals(widget.user.id);
+
+    if (mounted) {
+      setState(() {
+        _myTasks = tasks;
+        _journals = journals;
+        _isLoading = false; // Hide spinner
+      });
+    }
+  }
+  Future<void> _deleteTask(UserTasks task) async {
+    final success = await _userService.deleteUserTask(task);
+
+    if (success) {
+      setState(() {
+        _myTasks.remove(task); // Removes the task from the local list
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Task deleted successfully.")),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed to delete task.")),
+        );
+      }
+    }
+  }
+  Future<void> _deleteJournal(Journal journal) async {
+    final success = await _journalService.deleteJournal(journal);
+
+    if (success) {
+      setState(() {
+        _journals.remove(journal); // Șterge jurnalul din listă
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Journal deleted successfully.")),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed to delete journal.")),
+        );
+      }
+    }
+  }
+
+  // ---------------- ADD TASK DIALOG ----------------
+void _showTaskDialog({UserTasks? existingTask}) {
+    final nameController = TextEditingController(text: existingTask?.nameOfTask ?? "");
+    final descController = TextEditingController(text: existingTask?.description ?? "");
+
+    DateTime? selectedDate = existingTask?.date;
+    TimeOfDay? selectedTime = existingTask?.time;
     bool isSubmitting = false;
 
     showDialog(
@@ -53,69 +119,40 @@ class _UserPageState extends State<UserPage> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text("New Task"),
+              title: Text(existingTask == null ? "New Task" : "Edit Task"),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // NAME INPUT
                     TextField(
                       controller: nameController,
-                      decoration: const InputDecoration(
-                        labelText: "Task Name",
-                        prefixIcon: Icon(Icons.task),
-                      ),
+                      decoration: const InputDecoration(labelText: "Task Name", prefixIcon: Icon(Icons.task)),
                     ),
                     const SizedBox(height: 10),
-                    
-                    // DESCRIPTION INPUT (Optional)
                     TextField(
                       controller: descController,
-                      decoration: const InputDecoration(
-                        labelText: "Description (Optional)",
-                        prefixIcon: Icon(Icons.description),
-                      ),
+                      decoration: const InputDecoration(labelText: "Description", prefixIcon: Icon(Icons.description)),
                       maxLines: 2,
                     ),
                     const SizedBox(height: 20),
-
-                    // DATE PICKER
                     ListTile(
                       leading: const Icon(Icons.calendar_today),
-                      title: Text(
-                        selectedDate == null 
-                          ? "Pick a Date" 
-                          : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}"
-                      ),
+                      title: Text(selectedDate == null ? "Pick a Date" : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}"),
                       onTap: () async {
                         final picked = await showDatePicker(
-                          context: context,
-                          initialDate: DateTime.now(),
-                          firstDate: DateTime.now(),
-                          lastDate: DateTime(2100),
+                          context: context, initialDate: selectedDate ?? DateTime.now(), firstDate: DateTime(2000), lastDate: DateTime(2100),
                         );
-                        if (picked != null) {
-                          setDialogState(() => selectedDate = picked);
-                        }
+                        if (picked != null) setDialogState(() => selectedDate = picked);
                       },
                     ),
-
-                    // TIME PICKER
                     ListTile(
                       leading: const Icon(Icons.access_time),
-                      title: Text(
-                        selectedTime == null 
-                          ? "Pick a Time" 
-                          : selectedTime!.format(context)
-                      ),
+                      title: Text(selectedTime == null ? "Pick a Time" : selectedTime!.format(context)),
                       onTap: () async {
                         final picked = await showTimePicker(
-                          context: context,
-                          initialTime: TimeOfDay.now(),
+                          context: context, initialTime: selectedTime ?? TimeOfDay.now(),
                         );
-                        if (picked != null) {
-                          setDialogState(() => selectedTime = picked);
-                        }
+                        if (picked != null) setDialogState(() => selectedTime = picked);
                       },
                     ),
                   ],
@@ -128,54 +165,43 @@ class _UserPageState extends State<UserPage> {
                 ),
                 ElevatedButton(
                   onPressed: isSubmitting ? null : () async {
-                    // VALIDATION
-                    if (nameController.text.isEmpty || selectedDate == null || selectedTime == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Please fill Name, Date and Time."))
-                      );
-                      return;
-                    }
-
+                    if (nameController.text.isEmpty || selectedDate == null || selectedTime == null) return;
                     setDialogState(() => isSubmitting = true);
 
-                    // CREATE MODEL
-                    // Assuming widget.user has an 'id' or 'userId' field. 
-                    // Adjust 'widget.user.userId' to match your User model.
-                    final newTask = UserTasks(
-                      userId: widget.user.id, // <--- MAKE SURE THIS MATCHES YOUR USER MODEL
+                    final taskToSave = UserTasks(
+                      userTaskId: existingTask?.userTaskId, // ✅ Păstrăm ID-ul pentru Update
+                      userId: widget.user.id,
                       nameOfTask: nameController.text.trim(),
                       description: descController.text.trim(),
                       date: selectedDate!,
                       time: selectedTime!,
                     );
 
-                    // API CALL
-                    List<String> success = await _userService.createUserTask(newTask);
-
-                    if (success.isEmpty) {
-                      // UPDATE UI REAL-TIME
-                      setState(() {
-                        _myTasks.add(newTask);
-                      });
-                      
-                      if (mounted) {
-                        Navigator.pop(dialogContext);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Task added successfully!"))
-                        );
+                    if (existingTask == null) {
+                      // 🆕 CREATE TASK
+                      List<String> success = await _userService.createUserTask(taskToSave);
+                      if (success.isEmpty) {
+                        final refreshedTasks = await _userService.getUserTasks(widget.user.id); // Re-fetch pt ID real
+                        setState(() => _myTasks = refreshedTasks);
+                        if (mounted) Navigator.pop(dialogContext);
+                      } else {
+                        setDialogState(() => isSubmitting = false);
                       }
                     } else {
-                      setDialogState(() => isSubmitting = false);
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Failed to create task."))
-                        );
+                      // ✏️ UPDATE TASK
+                      bool success = await _userService.updateUserTask(taskToSave);
+                      if (success) {
+                        setState(() {
+                          final index = _myTasks.indexWhere((t) => t.userTaskId == existingTask.userTaskId);
+                          if (index != -1) _myTasks[index] = taskToSave;
+                        });
+                        if (mounted) Navigator.pop(dialogContext);
+                      } else {
+                        setDialogState(() => isSubmitting = false);
                       }
                     }
                   },
-                  child: isSubmitting 
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) 
-                    : const Text("Save"),
+                  child: isSubmitting ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text("Save"),
                 ),
               ],
             );
@@ -184,19 +210,449 @@ class _UserPageState extends State<UserPage> {
       },
     );
   }
+  // ---------------- GROUP TASKS BY DATE ----------------
+  Map<DateTime, List<UserTasks>> _groupTasksByDate(List<UserTasks> tasks) {
+    final Map<DateTime, List<UserTasks>> data = {};
 
+    for (var task in tasks) {
+      final date = DateTime(task.date.year, task.date.month, task.date.day);
+      data.putIfAbsent(date, () => []);
+      data[date]!.add(task);
+    }
+
+    return data;
+  }
+
+  // ---------------- SMALL CALENDAR ----------------
+  Widget _buildSmallCalendar(BuildContext context, List<UserTasks> tasks, {required bool isUpcoming}) {
+    final events = _groupTasksByDate(tasks);
+
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: TableCalendar<UserTasks>(
+            firstDay: DateTime(2000),
+            lastDay: DateTime(2100),
+            focusedDay: _focusedDay,
+            rowHeight: 36,
+            headerStyle: const HeaderStyle(
+              formatButtonVisible: false,
+              titleCentered: true,
+            ),
+            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+            eventLoader: (day) {
+              return events[DateTime(day.year, day.month, day.day)] ?? [];
+            },
+            onDaySelected: (selectedDay, focusedDay) {
+              setState(() {
+                _selectedDay = selectedDay;
+                _focusedDay = focusedDay;
+              });
+            },
+            calendarStyle: CalendarStyle(
+              markerDecoration: BoxDecoration(
+                color: isUpcoming ? Theme.of(context).primaryColor : Colors.grey,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        if (_selectedDay != null)
+          ..._buildTasksForSelectedDay(
+            events[DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)] ?? [],
+            isUpcoming: isUpcoming,
+          ),
+      ],
+    );
+  }
+
+  void _openJournalManager() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final theme = Theme.of(context);
+
+        return Dialog(
+          insetPadding: const EdgeInsets.all(20),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Container(
+            height: MediaQuery.of(context).size.height * 0.75,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: theme.cardColor,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("My Journal", style: theme.textTheme.titleLarge),
+                const SizedBox(height: 20),
+
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.add),
+                    label: const Text("New Journal"),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _openJournalEditor();
+                    },
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                Expanded(
+                  child: _journals.isEmpty
+                      ? const Center(child: Text("No journal entries yet."))
+                      : ListView.builder(
+                          itemCount: _journals.length,
+                          itemBuilder: (context, index) {
+                            final journal = _journals[index];
+
+                            return Card(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: ListTile(
+                                title: Text(
+                                  journal.journalName,
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                subtitle: Text(
+                                  journal.jounralText,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _openJournalEditor(existingJournal: journal);
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+void _openJournalEditor({Journal? existingJournal}) {
+    final nameController = TextEditingController(text: existingJournal?.journalName ?? "");
+    final textController = TextEditingController(text: existingJournal?.jounralText ?? "");
+    bool isSubmitting = false; 
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
+
+        return StatefulBuilder( 
+          builder: (context, setDialogState) {
+            return Dialog(
+              insetPadding: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              child: Container(
+                height: MediaQuery.of(context).size.height * 0.8,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: theme.cardColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      existingJournal == null ? "New Journal" : "Edit Journal",
+                      style: theme.textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 20),
+
+                    TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(
+                        labelText: "Journal Name",
+                        prefixIcon: Icon(Icons.book),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    Expanded(
+                      child: TextField(
+                        controller: textController,
+                        maxLines: null,
+                        expands: true,
+                        decoration: const InputDecoration(
+                          labelText: "Write your thoughts...",
+                          alignLabelWithHint: true,
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextButton(
+                          child: const Text("Cancel"),
+                          onPressed: () => Navigator.pop(dialogContext),
+                        ),
+                        ElevatedButton(
+                          onPressed: isSubmitting ? null : () async {
+                            if (nameController.text.trim().isEmpty || textController.text.trim().isEmpty) return;
+
+                            setDialogState(() => isSubmitting = true);
+
+                            // ✅ 1. ADAUGĂ IdJournal PENTRU A SUPORTA EDITAREA
+                            final newJournal = Journal(
+                              IdJournal: existingJournal?.IdJournal, 
+                              userId: widget.user.id,
+                              journalName: nameController.text.trim(),
+                              jounralText: textController.text.trim(),
+                            );
+
+                            if (existingJournal == null) {
+                              // 🆕 CREATE JOURNAL
+                              List<String> errors = await _journalService.addJournal(newJournal);
+
+                              if (errors.isEmpty) {
+                                final refreshedJournals = await _journalService.getJournals(widget.user.id);
+                                
+                                setState(() {
+                                  _journals = refreshedJournals;
+                                });
+                                
+                                if (mounted) Navigator.pop(dialogContext);
+                              } else {
+                                setDialogState(() => isSubmitting = false);
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text("Error: ${errors.join(', ')}")),
+                                  );
+                                }
+                              }
+                            } else {
+                              // ✏️ UPDATE EXISTING JOURNAL
+                              String? errorMsg = await _journalService.updateJournal(newJournal);
+
+                              if (errorMsg == null) { // null înseamnă Succes
+                                setState(() {
+                                  final index = _journals.indexWhere((j) => j.IdJournal == existingJournal.IdJournal);
+                                  if (index != -1) {
+                                    _journals[index] = newJournal; // Actualizăm vizual lista
+                                  }
+                                });
+                                if (mounted) Navigator.pop(dialogContext);
+                              } else {
+                                setDialogState(() => isSubmitting = false);
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text("Update failed: $errorMsg")),
+                                  );
+                                }
+                              }
+                            }
+                          },
+                          child: isSubmitting 
+                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) 
+                              : const Text("Save"),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+Widget _buildJournalSection() {
+    if (_journals.isEmpty) {
+      return Card(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Text("No journal notes yet."),
+        ),
+      );
+    }
+
+    return Column(
+      children: _journals.map((journal) {
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 6),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: ListTile(
+            title: Text(
+              journal.journalName,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text(
+              journal.jounralText,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            // ✅ AICI S-A MODIFICAT: Row pentru a adăposti ambele butoane
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.blue),
+                  onPressed: () => _openJournalEditor(existingJournal: journal),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  onPressed: () => _deleteJournal(journal),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+List<Widget> _buildTasksForSelectedDay(List<UserTasks> tasks, {required bool isUpcoming}) {
+    if (tasks.isEmpty) {
+      return [
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: Text(
+            "No tasks for this day.",
+            style: TextStyle(color: Theme.of(context).disabledColor),
+          ),
+        ),
+      ];
+    }
+
+    return tasks.map((task) {
+      return Card(
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 2,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ✅ MODIFIED: Wrapped title and delete button in a Row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      task.nameOfTask,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: isUpcoming ? null : Colors.grey,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: () => _deleteTask(task), // ✅ Calls the delete logic
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+           // Înlocuiește IconButton-ul de Delete cu acest Row:
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () => _showTaskDialog(existingTask: task), // ✅ Deschide dialogul cu datele vechi
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () => _deleteTask(task), 
+                      ),
+                    ],
+                  ),
+              const SizedBox(height: 8),
+              if (task.description.isNotEmpty)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.description, size: 16),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        task.description,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isUpcoming ? null : Colors.grey[700],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      );
+    }).toList();
+  }
+
+  // ---------------- BUILD ----------------
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final Color textColor = isDark ? Colors.white : Colors.black87;
-
+    final textColor = isDark ? Colors.white : Colors.black87;
     final gradientColors = isDark
         ? [theme.scaffoldBackgroundColor, theme.cardColor]
         : [
             theme.scaffoldBackgroundColor.withOpacity(0.9),
-            theme.scaffoldBackgroundColor
+            theme.scaffoldBackgroundColor,
           ];
+
+    // ✅ SHOW SPINNER WHILE WAITING FOR API
+    if (_isLoading) {
+      return Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final upcomingTasks = _myTasks.where((t) {
+      final tDate = DateTime(t.date.year, t.date.month, t.date.day);
+      return tDate.isAtSameMomentAs(today) || tDate.isAfter(today);
+    }).toList();
+
+    final pastTasks = _myTasks.where((t) {
+      final tDate = DateTime(t.date.year, t.date.month, t.date.day);
+      return tDate.isBefore(today);
+    }).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -205,25 +661,19 @@ class _UserPageState extends State<UserPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => const LoginPage()),
-                (route) => false,
-              );
-            },
+            onPressed: () => Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (_) => const LoginPage()),
+              (route) => false,
+            ),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => ThemeController.toggleTheme(),
-        backgroundColor: theme.primaryColor,
-        foregroundColor: isDark ? Colors.black : Colors.white,
         child: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
       ),
       body: Container(
-        width: double.infinity,
-        height: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: gradientColors,
@@ -237,31 +687,17 @@ class _UserPageState extends State<UserPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
-              
-              // --- HEADER ---
               Row(
                 children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 10,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: CircleAvatar(
-                      radius: 35,
-                      backgroundColor: theme.primaryColor,
-                      child: Text(
-                        widget.user.name.isNotEmpty ? widget.user.name[0].toUpperCase() : "?",
-                        style: const TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                  CircleAvatar(
+                    radius: 35,
+                    backgroundColor: theme.primaryColor,
+                    child: Text(
+                      widget.user.name.isNotEmpty ? widget.user.name[0].toUpperCase() : "?",
+                      style: const TextStyle(
+                        fontSize: 30,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
@@ -271,74 +707,50 @@ class _UserPageState extends State<UserPage> {
                     children: [
                       Text(
                         "Hello,",
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: textColor.withOpacity(0.8),
-                        ),
+                        style: TextStyle(fontSize: 16, color: textColor.withOpacity(0.8)),
                       ),
                       Text(
                         widget.user.name,
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: textColor,
-                        ),
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textColor),
                       ),
                     ],
                   ),
                 ],
               ),
-
               const SizedBox(height: 40),
-
-              // ==============================
-              // 1. BUTOANELE (BUTTONS)
-              // ==============================
-              Text("Actions", style: TextStyle(color: textColor.withOpacity(0.6), fontWeight: FontWeight.bold)),
+              Text(
+                "Actions",
+                style: TextStyle(color: textColor.withOpacity(0.6), fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 10),
-
-              _buildMenuButton(
-                context, 
-                "Add Your Activities", 
-                Icons.add_task, // Changed Icon
-                _showAddTaskDialog // Calls the dialog
-              ),
-              
+              _buildMenuButton(context, "Add Your Activities", Icons.add_task, _showTaskDialog),
               const SizedBox(height: 16),
-              
-              _buildMenuButton(
-                context, 
-                "Add Nearby Activities", 
-                Icons.map, 
-                () => print("Button 2 Pressed")
-              ),
-
+              _buildMenuButton(context, "Add Nearby Activities", Icons.map, () {}),
+              const SizedBox(height: 16),
+              _buildMenuButton(context, "My Journal", Icons.menu_book, () => _openJournalManager()),
               const SizedBox(height: 40),
-
-              // ==============================
-              // 2. LISTELE DROPDOWN (EXPANSION TILES)
-              // ==============================
-              Text("Lists", style: TextStyle(color: textColor.withOpacity(0.6), fontWeight: FontWeight.bold)),
+              Text(
+                "Upcoming Calendar",
+                style: TextStyle(color: textColor.withOpacity(0.6), fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 10),
-
-              // YOUR ACTIVITIES (Using UserTasks objects)
-              _buildUserTasksList(
-                context, 
-                "Your Activities List", 
-                Icons.list_alt, 
-                _myTasks
+              _buildSmallCalendar(context, upcomingTasks, isUpcoming: true),
+              const SizedBox(height: 30),
+              Text(
+                "History",
+                style: TextStyle(color: textColor.withOpacity(0.6), fontWeight: FontWeight.bold),
               ),
-
-              const SizedBox(height: 16),
-
-              // NEARBY ACTIVITIES (Still Strings for now)
-              _buildStringList(
-                context, 
-                "Nearby Activities List", 
-                Icons.location_on_outlined, 
-                widget.nearbyActivities
+              const SizedBox(height: 10),
+              _buildSmallCalendar(context, pastTasks, isUpcoming: false),
+              const SizedBox(height: 40),
+              Text(
+                "My Journal",
+                style: TextStyle(color: textColor.withOpacity(0.6), fontWeight: FontWeight.bold),
               ),
-              
+              const SizedBox(height: 10),
+              _buildJournalSection(),
+              const SizedBox(height: 40),
+              _buildStringList(context, "Nearby Activities List", Icons.location_on_outlined, widget.nearbyActivities),
               const SizedBox(height: 40),
             ],
           ),
@@ -347,116 +759,40 @@ class _UserPageState extends State<UserPage> {
     );
   }
 
-  // --- WIDGET PENTRU BUTOANE ---
   Widget _buildMenuButton(BuildContext context, String title, IconData icon, VoidCallback onPressed) {
-    final theme = Theme.of(context);
     return SizedBox(
       width: double.infinity,
       height: 55,
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: theme.cardColor,
-          foregroundColor: theme.textTheme.bodyLarge?.color,
-          elevation: 2,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           padding: const EdgeInsets.symmetric(horizontal: 20),
           alignment: Alignment.centerLeft,
         ),
         child: Row(
           children: [
-            Icon(icon, color: theme.primaryColor),
+            Icon(icon),
             const SizedBox(width: 16),
             Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             const Spacer(),
-            Icon(Icons.arrow_forward_ios, size: 14, color: theme.disabledColor),
+            const Icon(Icons.arrow_forward_ios, size: 14),
           ],
         ),
       ),
     );
   }
 
-  // --- WIDGET PENTRU LISTA DE TASK-URI (COMPLEX OBJECTS) ---
-  Widget _buildUserTasksList(BuildContext context, String title, IconData icon, List<UserTasks> tasks) {
-    final theme = Theme.of(context);
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: theme.cardColor,
-      child: ExpansionTile(
-        leading: Icon(icon, color: theme.primaryColor),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        children: [
-          if (tasks.isEmpty)
-             Padding(
-               padding: const EdgeInsets.all(16.0),
-               child: Text("No tasks added yet.", style: TextStyle(color: theme.disabledColor)),
-             )
-          else
-            SizedBox(
-              height: 200, // Slightly taller for detailed items
-              child: Scrollbar(
-                thumbVisibility: true,
-                child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: tasks.length,
-                  separatorBuilder: (ctx, i) => const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    final task = tasks[index];
-                    return ListTile(
-                      title: Text(task.nameOfTask, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text(
-                        "${task.date.day}/${task.date.month} - ${task.time.format(context)}\n${task.description.isEmpty ? '' : task.description}",
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      isThreeLine: true,
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                    );
-                  },
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  // --- WIDGET PENTRU LISTA SIMPLĂ (STRINGS) ---
   Widget _buildStringList(BuildContext context, String title, IconData icon, List<String> items) {
-    final theme = Theme.of(context);
     return Card(
-      elevation: 4,
+      elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: theme.cardColor,
       child: ExpansionTile(
-        leading: Icon(icon, color: theme.primaryColor),
+        leading: Icon(icon),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        children: [
-          if (items.isEmpty)
-             Padding(
-               padding: const EdgeInsets.all(16.0),
-               child: Text("No activities found.", style: TextStyle(color: theme.disabledColor)),
-             )
-          else
-            SizedBox(
-              height: 150,
-              child: Scrollbar(
-                thumbVisibility: true,
-                child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: items.length,
-                  separatorBuilder: (ctx, i) => const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    return ListTile(
-                      title: Text(items[index]),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                    );
-                  },
-                ),
-              ),
-            ),
-        ],
+        children: items.isEmpty
+            ? [const Padding(padding: EdgeInsets.all(16), child: Text("No items found."))]
+            : items.map((e) => ListTile(title: Text(e))).toList(),
       ),
     );
   }

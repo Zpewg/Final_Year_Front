@@ -14,6 +14,7 @@ dependencies:
   form_builder_validators: ^11.2.0
   flutter_svg: ^2.2.0
   provider: ^6.0.5
+  table_calendar: ^3.0.9
 
 dev_dependencies:
   flutter_test:
