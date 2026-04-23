@@ -5,10 +5,12 @@ import '../model/user_task_model.dart';
 import '../model/journal_model.dart';
 import '../theme/theme_controller.dart';
 import 'login_page.dart';
-
+import '../API/api_handler.dart'; 
 // Make sure these imports match your actual file paths
 import '../API/userTasks_api.dart'; 
 import '../API/journal_service.dart';
+import '../model/user_task_global_model.dart'; // importul tău corect
+import '../API/userTasksGlobal_api.dart'; // importul tău corect
 
 class UserPage extends StatefulWidget {
   final User user;
@@ -32,7 +34,7 @@ class _UserPageState extends State<UserPage> {
   late List<UserTasks> _myTasks;
   late List<Journal> _journals; 
   bool _isLoading = true; // Set to true initially
-
+final UserTasksGlobalService _globalTasksService = UserTasksGlobalService();
   final UserTasksService _userService = UserTasksService();
   final JournalService _journalService = JournalService(); 
 
@@ -101,6 +103,196 @@ class _UserPageState extends State<UserPage> {
         );
       }
     }
+    
+  }
+ void _promptShareLocation() {
+    int selectedKm = 5; // valoare implicită
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text("Share your location?"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text("We need your location to find nearby activities."),
+                  const SizedBox(height: 16),
+                  const Text("In what range would you like to see activities? Max 16 km"),
+                  const SizedBox(height: 10),
+                  Slider(
+                    value: selectedKm.toDouble(),
+                    min: 1,
+                    max: 16,
+                    divisions: 15,
+                    label: "$selectedKm km",
+                    onChanged: (val) {
+                      setDialogState(() {
+                        selectedKm = val.toInt();
+                      });
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text("No"),
+                ),
+          ElevatedButton(
+  onPressed: () async {
+    Navigator.pop(ctx); 
+    
+    // Trimitem true pentru locație, kilometrii selectați și obiectul widget.user
+    bool success = await ApiHandler().updateLocation(true, selectedKm, widget.user);
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(success ? "Location shared successfully!" : "Failed to share location.")),
+      );
+    }
+  },
+  child: const Text("Yes"),
+),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+  void _showGlobalTaskDialog() {
+    final nameController = TextEditingController();
+    final descController = TextEditingController();
+    DateTime? selectedDate = DateTime.now();
+    TimeOfDay? selectedTime = TimeOfDay.now();
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Row(
+                children: const [
+                  Icon(Icons.public, color: Colors.blue),
+                  SizedBox(width: 8),
+                  Text("New Global Task"),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 🔴 MESAJE DE ATENȚIONARE 🔴
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        border: Border.all(color: Colors.orange),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              "Warning: This task will be visible to ALL users within your shared location range.",
+                              style: TextStyle(color: Colors.orange[800], fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(labelText: "Task Name", prefixIcon: Icon(Icons.task)),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: descController,
+                      decoration: const InputDecoration(labelText: "Description", prefixIcon: Icon(Icons.description)),
+                      maxLines: 2,
+                    ),
+                    const SizedBox(height: 20),
+                    ListTile(
+                      leading: const Icon(Icons.calendar_today),
+                      title: Text("${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}"),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context, initialDate: selectedDate!, firstDate: DateTime.now(), lastDate: DateTime(2100),
+                        );
+                        if (picked != null) setDialogState(() => selectedDate = picked);
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.access_time),
+                      title: Text(selectedTime!.format(context)),
+                      onTap: () async {
+                        final picked = await showTimePicker(
+                          context: context, initialTime: selectedTime!,
+                        );
+                        if (picked != null) setDialogState(() => selectedTime = picked);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text("Cancel"),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                  onPressed: isSubmitting ? null : () async {
+                    if (nameController.text.isEmpty) return;
+                    setDialogState(() => isSubmitting = true);
+
+                    final taskToSave = UserTasksGlobal(
+                      userId: widget.user.id,
+                      nameOfTask: nameController.text.trim(),
+                      description: descController.text.trim(),
+                      date: selectedDate!,
+                      time: selectedTime!,
+                      // Location nu e trimis aici, C# îl ia automat din User pe baza ID-ului conform logicii tale backend
+                    );
+
+                    List<String> errors = await _globalTasksService.createUserTaskGlobal(taskToSave, widget.user);
+                    
+                    if (errors.isEmpty) {
+                      if (mounted) {
+                        Navigator.pop(dialogContext);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Global task published successfully!")),
+                        );
+                      }
+                    } else {
+                      setDialogState(() => isSubmitting = false);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Error: ${errors.join(', ')}")),
+                        );
+                      }
+                    }
+                  },
+                  child: isSubmitting 
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) 
+                    : const Text("Publish Globally", style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   // ---------------- ADD TASK DIALOG ----------------
@@ -725,10 +917,16 @@ List<Widget> _buildTasksForSelectedDay(List<UserTasks> tasks, {required bool isU
               const SizedBox(height: 10),
               _buildMenuButton(context, "Add Your Activities", Icons.add_task, _showTaskDialog),
               const SizedBox(height: 16),
-              _buildMenuButton(context, "Add Nearby Activities", Icons.map, () {}),
-              const SizedBox(height: 16),
+              _buildMenuButton(context, "Add Global Activity", Icons.public, _showGlobalTaskDialog),
+const SizedBox(height: 16),
+            
               _buildMenuButton(context, "My Journal", Icons.menu_book, () => _openJournalManager()),
-              const SizedBox(height: 40),
+              
+              const SizedBox(height: 20),
+              
+              _buildMenuButton(context, "Share Location", Icons.public, _promptShareLocation),
+              const SizedBox(height: 20),
+               
               Text(
                 "Upcoming Calendar",
                 style: TextStyle(color: textColor.withOpacity(0.6), fontWeight: FontWeight.bold),

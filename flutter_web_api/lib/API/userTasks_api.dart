@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../model/user_task_model.dart';
-
+import 'package:flutter/foundation.dart'; // Pentru debugPrint
 class UserTasksService {
   final String baseUrl = "https://localhost:7152/api/UserTasks";
 
@@ -28,30 +28,47 @@ class UserTasksService {
       return ["Exception occurred: $e"];
     }
   }
-  Future<List<UserTasks>> getUserTasks(int userId) async {
+Future<List<UserTasks>> getUserTasks(int userId) async {
     try {
-      // Build URL with Query Parameter: .../api/UserTasks/get?userId=1
       final uri = Uri.parse("$baseUrl/get?userId=$userId");
+      debugPrint("🚀 TRIMIT REQUEST CATRE: $uri"); // Trebuie să apară!
 
       final response = await http.get(uri);
+      
+      debugPrint("📦 STATUS CODE PRIMIT: ${response.statusCode}");
+      debugPrint("📦 BODY PRIMIT: ${response.body}"); // Asta ne arată exact ce trimite C#
 
-      if (response.statusCode == 200) {
-        // 1. Decode the raw JSON string into a List<dynamic>
-        final List<dynamic> body = jsonDecode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        if (response.body.isEmpty) return [];
 
-        // 2. Map each item in the list to a UserTasks object
-        final List<UserTasks> tasks = body
-            .map((dynamic item) => UserTasks.fromJson(item))
-            .toList();
+        final dynamic decoded = jsonDecode(response.body);
 
-        return tasks;
+        if (decoded is Map) {
+          if (decoded.containsKey('\$values')) {
+            final List<dynamic> body = decoded['\$values'];
+            return body.map((item) => UserTasks.fromJson(item)).toList();
+          }
+          if (decoded.containsKey('data')) {
+            final List<dynamic> body = decoded['data'];
+            return body.map((item) => UserTasks.fromJson(item)).toList();
+          }
+          // Dacă e un Map dubios (ex o eroare formatată JSON), forțăm afișarea în consolă
+          debugPrint("⚠️ JSON NECUNOSCUT (MAP): $decoded");
+          return [];
+        }
+
+        if (decoded is List) {
+          return decoded.map((item) => UserTasks.fromJson(item)).toList();
+        }
+
+        return [];
       } else {
-        print("❌ Error fetching tasks: ${response.statusCode}");
-        return []; // Return empty list on failure
+        return [];
       }
     } catch (e) {
-      print("🚨 Exception fetching tasks: $e");
-      return []; // Return empty list on exception
+      debugPrint("🚨 EROARE FATALĂ IN GET TASKS: $e");
+      // Aruncăm eroarea mai departe ca să o vedem clar în UI
+      throw Exception("Eroare la citirea task-urilor: $e");
     }
   }
   Future<bool> deleteUserTask(UserTasks task) async {

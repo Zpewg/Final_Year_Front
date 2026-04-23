@@ -47,7 +47,7 @@ class _MainPageState extends State<MainPage> {
         itemBuilder: (BuildContext context, int index){
           return ListTile(
         
-            title: Text("${data[index].name}"),
+            title: Text(data[index].name),
             subtitle: Text(data[index].email),
           );
         },)

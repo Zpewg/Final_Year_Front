@@ -42,6 +42,27 @@ class ApiHandler{
       print("Error: ${response.statusCode}, ${response.body}");
     }
   }
-  
-
+Future<bool> updateLocation(bool location, int km, User user) async {
+    final uri = Uri.parse("$baseUri/$location?km=$km");
+    
+    try {
+      final response = await http.post(
+        uri,
+        headers: {"Content-Type": "application/json; charset=UTF-8"},
+        // Serializăm obiectul user primit ca parametru
+        body: jsonEncode(user.toJson()), 
+      );
+      
+      if (response.statusCode >= 200 && response.statusCode <= 299) {
+        print("Location updated: ${response.body}");
+        return true;
+      } else {
+        print("Error ${response.statusCode}: ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      print("Error updating location: $e");
+      return false;
+    }
+  }
 }
