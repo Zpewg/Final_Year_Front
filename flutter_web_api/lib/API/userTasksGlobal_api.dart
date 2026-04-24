@@ -1,59 +1,66 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../model/user_task_global_model.dart'; 
-import '../model/model.dart'; // Numele fișierului unde ai modelul UserTasksGlobal
+import '../model/model.dart';
+import '../model/global_task_request_model.dart'; // Numele fișierului unde ai modelul UserTasksGlobal
 
 class UserTasksGlobalService {
   final String baseUrl = "https://localhost:7152/api/UserTasksGlobal";
 
 // ✅ Am adăugat parametrul "User user"
-  Future<List<String>> createUserTaskGlobal(UserTasksGlobal task, User user) async {
-    try {
-      // ✅ Împachetăm ambele obiecte într-un singur Map
-      final requestBody = {
-        "Task": task.toJson(),
-        "User": user.toJson(),
-      };
+Future<List<String>> createUserTaskGlobal(UserTasksGlobal taskToSave, User user) async {
+  final requestDto = GlobalTaskRequestDto(task: taskToSave, user: user);
 
-      final response = await http.post(
-        Uri.parse("$baseUrl/create"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(requestBody), // Trimitem pachetul combinat
-      );
+  try {
+    final response = await http.post(
+      Uri.parse('$baseUrl/create'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(requestDto.toJson()),
+    );
 
-      if (response.statusCode >= 200 && response.statusCode <= 299) {
-        return []; // ✅ Success
-      } else {
-        final dynamic decoded = jsonDecode(response.body);
+    if (response.statusCode == 200 || response.statusCode == 400) {
+      final decoded = jsonDecode(response.body);
+      List<String> errorsList = [];
+
+      // Extragem erorile indiferent de formatul returnat de .NET (Listă sau Map)
+      if (decoded is List) {
+        errorsList = List<String>.from(decoded);
+      } else if (decoded is Map<String, dynamic>) {
+        final errorsData = decoded['errors'];
         
-        // ... (Aici rămâne exact logica ta de tratare a erorilor de mai devreme cu "if (decoded is Map)") ...
-        
-        if (decoded is Map) {
-          List<String> extractedErrors = [];
-          if (decoded.containsKey('errors')) {
-             // ... restul logicii de extragere erori
-             return extractedErrors;
+        if (errorsData is List) {
+          errorsList = List<String>.from(errorsData);
+        } else if (errorsData is Map) {
+          for (var value in errorsData.values) {
+            if (value is List) {
+              errorsList.addAll(List<String>.from(value));
+            }
           }
-          if (decoded.containsKey('title')) return [decoded['title'].toString()];
-          return ["Eroare la server (Cod ${response.statusCode})"];
         }
-        
-        if (decoded is List) return decoded.map((e) => e.toString()).toList();
-        return ["Eroare necunoscută la server."];
       }
-    } catch (e) {
-      print("🚨 Exception: $e");
-      return ["Exception occurred: $e"];
+
+      if (errorsList.isNotEmpty) {
+        print('⚠️ Erori returnate de API: $errorsList');
+      }
+      
+      return errorsList;
+    } else {
+      print('❌ Eroare HTTP. Status code: ${response.statusCode}, Body: ${response.body}');
+      throw Exception('Failed to create task');
     }
+  } catch (e) {
+    print('🚨 Excepție la apelul API (ex: problemă de rețea): $e');
+    throw Exception('Failed to create task: $e');
   }
+}
 
   // Aici presupun că trimiți doar Km în query (ID-ul sau Point-ul depinde de implementarea ta exactă de pe backend. 
   // Din controller-ul tău C# văd că ai "User user" ca parametru la Get, ceea ce de obicei înseamnă un [FromBody] la POST, nu GET. 
   // Dar dacă ai schimbat să folosească direct din DB baza pe un parametru, va arăta cam așa:
-Future<List<UserTasksGlobal>> getGlobalTasksByKm(User user, int km) async {
+Future<List<UserTasksGlobal>> getGlobalTasksByKm(User user) async {
     try {
       // Punem km în URL, iar obiectul User va fi în body
-      final uri = Uri.parse("$baseUrl/get?km=$km");
+      final uri = Uri.parse("$baseUrl/get");
       
       // ✅ Folosim POST în loc de GET pentru a putea trimite JSON-ul în body
       final response = await http.post(

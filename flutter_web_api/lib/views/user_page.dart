@@ -37,6 +37,7 @@ class _UserPageState extends State<UserPage> {
 final UserTasksGlobalService _globalTasksService = UserTasksGlobalService();
   final UserTasksService _userService = UserTasksService();
   final JournalService _journalService = JournalService(); 
+  List<UserTasksGlobal> _nearbyActivities = [];
 
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
@@ -52,15 +53,18 @@ final UserTasksGlobalService _globalTasksService = UserTasksGlobalService();
   }
 
   // ✅ FETCH DATA USING YOUR METHODS
-  Future<void> _fetchData() async {
+Future<void> _fetchData() async {
     final tasks = await _userService.getUserTasks(widget.user.id);
     final journals = await _journalService.getJournals(widget.user.id);
+    // ✅ Aduce activitățile globale folosind metoda ta
+    final globalTasks = await _globalTasksService.getGlobalTasksByKm(widget.user);
 
     if (mounted) {
       setState(() {
         _myTasks = tasks;
         _journals = journals;
-        _isLoading = false; // Hide spinner
+        _nearbyActivities = globalTasks; // ✅ Salvăm datele
+        _isLoading = false; 
       });
     }
   }
@@ -267,7 +271,11 @@ final UserTasksGlobalService _globalTasksService = UserTasksGlobalService();
 
                     List<String> errors = await _globalTasksService.createUserTaskGlobal(taskToSave, widget.user);
                     
-                    if (errors.isEmpty) {
+            if (errors.isEmpty) {
+                      // ✅ Reîncărcăm datele pentru a actualiza UI-ul
+                      final refreshedGlobals = await _globalTasksService.getGlobalTasksByKm(widget.user);
+                      setState(() => _nearbyActivities = refreshedGlobals);
+
                       if (mounted) {
                         Navigator.pop(dialogContext);
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -948,7 +956,12 @@ const SizedBox(height: 16),
               const SizedBox(height: 10),
               _buildJournalSection(),
               const SizedBox(height: 40),
-              _buildStringList(context, "Nearby Activities List", Icons.location_on_outlined, widget.nearbyActivities),
+              _buildStringList(
+                context, 
+                "Nearby Activities List", 
+                Icons.location_on_outlined, 
+                _nearbyActivities.map((e) => e.nameOfTask).toList()
+              ),
               const SizedBox(height: 40),
             ],
           ),

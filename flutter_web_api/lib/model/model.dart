@@ -5,7 +5,8 @@ class User {
   final String password;
   final String phoneNumber;
   final bool active;
-  final Map<String, dynamic>? location; // ✅ Adăugat pentru coordonate (GeoJSON)
+  final Map<String, dynamic>? location;
+  final int? km; // ✅ Adăugat pentru coordonate (GeoJSON)
 
   const User({
     this.id = 0,
@@ -14,7 +15,8 @@ class User {
     required this.password,
     required this.phoneNumber,
     required this.active,
-    this.location, // ✅ Adăugat aici
+    this.location,
+    this.km, // ✅ Adăugat aici
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -30,12 +32,13 @@ class User {
   }
 
   Map<String, dynamic> toJson() => {
-        "Id": id,
+        "UserId": id,
         "Email": email,
         "Name": name,
         "Password": password,
         "PhoneNumber": phoneNumber,
         "Active": active,
-        "Location": location, // ✅ Trimitem locația înapoi dacă e nevoie
+        "Location": location,
+        "Km": km, // ✅ Trimitem locația înapoi dacă e nevoie
       };
 }
