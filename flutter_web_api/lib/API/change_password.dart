@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import '../model/new_password_from_user_model.dart'; 
 
 class ChangePasswordService {
-  final String baseUrl = "https://localhost:7152/api/ChangePassword";
+  final String baseUrl = "http://localhost:7152/api/ChangePassword";
 
   // Step 1: Check Email
   Future<bool> checkMailExist(String mail) async {

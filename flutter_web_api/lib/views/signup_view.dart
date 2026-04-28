@@ -4,6 +4,7 @@ import '../API/user_service.dart';
 import '../password_rules/password_field_with_rules.dart';
 import '../API/verify_message_service.dart';
 import '../model/verification_model.dart';
+import '../model/userDTO_model.dart';
 
 
 class SignUpView extends StatefulWidget {
@@ -120,12 +121,12 @@ Widget build(BuildContext context) {
             ElevatedButton(
               onPressed: () async {
                 if (_formKey.currentState!.validate()) {
-                  final user = User(
+                  final user = UserDTO(
                     name: _nameController.text.trim(),
                     email: _emailController.text.trim(),
                     password: _passwordController.text,
                     phoneNumber: _phoneController.text.trim(),
-                    active: false,
+                    
                   );
 
                   final result = await _userService.registerUser(user);

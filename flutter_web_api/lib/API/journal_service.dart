@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import '../model/journal_model.dart';
 
 class JournalService {
-  final String baseUrl = "https://localhost:7152/api/WriteInJournal";
+  final String baseUrl = "http://localhost:7152/api/WriteInJournal";
 
   Future<List<String>> addJournal( Journal journal) async {
     try{

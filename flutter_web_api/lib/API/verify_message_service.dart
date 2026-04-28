@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 
 
 class VerifyService{
-  final String baseUrl = "https://localhost:7152/api/CodeFromUser";
+  final String baseUrl = "http://localhost:7152/api/CodeFromUser";
 
   Future <void> registerMessage(VerifyMessage message) async {
     try{

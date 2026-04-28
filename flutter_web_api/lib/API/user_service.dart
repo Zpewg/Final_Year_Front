@@ -1,11 +1,12 @@
 import 'dart:convert';
+import 'package:flutter_web_api/model/userDTO_model.dart';
 import 'package:http/http.dart' as http;
-import '../model/model.dart';
+
 
 class UserService {
-  final String baseUrl = "https://localhost:7152/api/UserDTO";
+  final String baseUrl = "http://localhost:7152/api/UserDTO";
 
-  Future<List<String>> registerUser(User user) async {
+  Future<List<String>> registerUser(UserDTO user) async {
     try {
       final response = await http.post(
         Uri.parse("$baseUrl/register"),
@@ -18,6 +19,7 @@ class UserService {
         return [];
       } else {
         print("❌ Error: ${response.statusCode}, ${response.body}");
+        
 
         // Decode as list of errors
         final List<dynamic> body = jsonDecode(response.body);

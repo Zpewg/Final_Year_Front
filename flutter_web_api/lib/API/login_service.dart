@@ -4,7 +4,7 @@ import '../model/login_model.dart';
 import '../model/model.dart';
 
 class LoginService {
-  final String baseUrl = "https://localhost:7152/api/LogIn";
+  final String baseUrl = "http://localhost:7152/api/LogIn";
 
   Future<User?> logInUser(Login login) async {
     final response = await http.post(

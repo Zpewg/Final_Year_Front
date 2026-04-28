@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import '../model/user_task_model.dart';
 import 'package:flutter/foundation.dart'; // Pentru debugPrint
 class UserTasksService {
-  final String baseUrl = "https://localhost:7152/api/UserTasks";
+  final String baseUrl = "http://localhost:7152/api/UserTasks";
 
   Future<List<String>> createUserTask(UserTasks UserTasks) async {
     try {

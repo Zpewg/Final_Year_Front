@@ -5,7 +5,7 @@ import '../model/model.dart';
 import '../model/global_task_request_model.dart'; // Numele fișierului unde ai modelul UserTasksGlobal
 
 class UserTasksGlobalService {
-  final String baseUrl = "https://localhost:7152/api/UserTasksGlobal";
+  final String baseUrl = "http://localhost:7152/api/UserTasksGlobal";
 
 // ✅ Am adăugat parametrul "User user"
 Future<List<String>> createUserTaskGlobal(UserTasksGlobal taskToSave, User user) async {
