@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../model/model.dart';
 import '../API/user_service.dart';
 import '../password_rules/password_field_with_rules.dart';
 import '../API/verify_message_service.dart';
