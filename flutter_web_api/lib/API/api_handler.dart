@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_web_api/model/model.dart';
 import 'package:http/http.dart'as http;
+import '../services/location_service_selector.dart';
 
 class ApiHandler{
   final String baseUri = "http://localhost:7152/api/User";
@@ -42,27 +43,27 @@ class ApiHandler{
       print("Error: ${response.statusCode}, ${response.body}");
     }
   }
-Future<bool> updateLocation(bool location, int km, User user) async {
-    final uri = Uri.parse("$baseUri/$location?km=$km");
-    
-    try {
-      final response = await http.post(
-        uri,
-        headers: {"Content-Type": "application/json; charset=UTF-8"},
-        // Serializăm obiectul user primit ca parametru
-        body: jsonEncode(user.toJson()), 
-      );
-      
-      if (response.statusCode >= 200 && response.statusCode <= 299) {
-        print("Location updated: ${response.body}");
-        return true;
-      } else {
-        print("Error ${response.statusCode}: ${response.body}");
-        return false;
-      }
-    } catch (e) {
-      print("Error updating location: $e");
-      return false;
-    }
-  }
+Future<bool> updateLocation(int userId, int km) async {
+  final locationService = getLocationService();
+  final coords = await locationService.getCurrentLocation();
+
+  if (coords == null) return false;
+
+  final uri = Uri.parse("$baseUri/location");
+
+  final body = {
+    "userId": userId,
+    "latitude": coords["lat"],
+    "longitude": coords["lng"],
+    "km": km,
+  };
+
+  final response = await http.post(
+    uri,
+    headers: {"Content-Type": "application/json"},
+    body: jsonEncode(body),
+  );
+
+  return response.statusCode >= 200 && response.statusCode < 300;
+}
 }
