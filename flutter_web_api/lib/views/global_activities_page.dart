@@ -14,23 +14,142 @@ class GlobalActivitiesPage extends StatefulWidget {
 class _GlobalActivitiesPageState extends State<GlobalActivitiesPage> {
   final UserTasksGlobalService _service = UserTasksGlobalService();
   List<UserTasksGlobal> items = [];
+  List<UserTasksGlobal> usersGlobalTasks = [];
   bool loading = true;
 
   @override
   void initState() {
     super.initState();
-    load();
+    loadAllData();
   }
 
-  Future<void> load() async {
+  Future<void> loadAllData() async {
     setState(() => loading = true);
-    final data = await _service.getGlobalTasksByKm(widget.user);
+    final results = await Future.wait([
+      _service.getGlobalTasksByKm(widget.user),
+      _service.getGlobalTasksByUserId(widget.user),
+    ]);
     if (mounted) {
       setState(() {
-        items = data;
+        items = results[0];
+        usersGlobalTasks = results[1];
         loading = false;
       });
     }
+  }
+
+  Future<void> _deleteTask(UserTasksGlobal task) async {
+    final success = await _service.deleteUserTaskGlobal(task);
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Task deleted!")));
+      loadAllData();
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to delete task.")));
+    }
+  }
+
+  Future<void> _showEditDialog(UserTasksGlobal task) async {
+    final nameCtrl = TextEditingController(text: task.nameOfTask);
+    final descCtrl = TextEditingController(text: task.description ?? "");
+    DateTime? selectedDate = task.date;
+    TimeOfDay? selectedTime = task.time;
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            title: const Text("Edit Global Activity"),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: const InputDecoration(labelText: "Name"),
+                  ),
+                  TextField(
+                    controller: descCtrl,
+                    decoration: const InputDecoration(labelText: "Description"),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton.icon(
+                          icon: const Icon(Icons.calendar_today),
+                          label: Text("${selectedDate!.toLocal()}".split(' ')[0]),
+                          onPressed: () async {
+                            final date = await showDatePicker(
+                              context: context,
+                              initialDate: selectedDate!,
+                              firstDate: DateTime.now(),
+                              lastDate: DateTime(2100),
+                            );
+                            if (date != null) setStateDialog(() => selectedDate = date);
+                          },
+                        ),
+                      ),
+                      Expanded(
+                        child: TextButton.icon(
+                          icon: const Icon(Icons.access_time),
+                          label: Text(selectedTime!.format(context)),
+                          onPressed: () async {
+                            final time = await showTimePicker(
+                              context: context,
+                              initialTime: selectedTime!,
+                            );
+                            if (time != null) setStateDialog(() => selectedTime = time);
+                          },
+                        ),
+                      ),
+                    ],
+                  )
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancel"),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  if (nameCtrl.text.isEmpty) return;
+
+                  final updatedTask = UserTasksGlobal(
+                    userTaskId: task.userTaskId,
+                    userId: widget.user.id,
+                    nameOfTask: nameCtrl.text,
+                    description: descCtrl.text,
+                    date: selectedDate!,
+                    time: selectedTime!,
+                    location: task.location,
+                  );
+
+                  final errors = await _service.updateUserTaskGlobal(updatedTask);
+                  
+                  if (mounted) {
+                    if (errors.isEmpty) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Task updated successfully!"))
+                      );
+                      loadAllData();
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(errors.join(', '))),
+                      );
+                    }
+                  }
+                },
+                child: const Text("Update"),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _showAddDialog() async {
@@ -71,9 +190,7 @@ class _GlobalActivitiesPageState extends State<GlobalActivitiesPage> {
                               firstDate: DateTime.now(),
                               lastDate: DateTime(2100),
                             );
-                            if (date != null) {
-                              setStateDialog(() => selectedDate = date);
-                            }
+                            if (date != null) setStateDialog(() => selectedDate = date);
                           },
                         ),
                       ),
@@ -86,9 +203,7 @@ class _GlobalActivitiesPageState extends State<GlobalActivitiesPage> {
                               context: context,
                               initialTime: selectedTime!,
                             );
-                            if (time != null) {
-                              setStateDialog(() => selectedTime = time);
-                            }
+                            if (time != null) setStateDialog(() => selectedTime = time);
                           },
                         ),
                       ),
@@ -106,7 +221,6 @@ class _GlobalActivitiesPageState extends State<GlobalActivitiesPage> {
                 onPressed: () async {
                   if (nameCtrl.text.isEmpty) return;
 
-                  // Actualizat cu parametrii noului tău model
                   final newTask = UserTasksGlobal(
                     userTaskId: 0,
                     userId: widget.user.id,
@@ -114,7 +228,7 @@ class _GlobalActivitiesPageState extends State<GlobalActivitiesPage> {
                     description: descCtrl.text,
                     date: selectedDate!,
                     time: selectedTime!,
-                    location: null, // Poți adăuga logica de locație mai târziu
+                    location: null,
                   );
 
                   final errors = await _service.createUserTaskGlobal(newTask, widget.user);
@@ -122,7 +236,7 @@ class _GlobalActivitiesPageState extends State<GlobalActivitiesPage> {
                   if (mounted) {
                     if (errors.isEmpty) {
                       Navigator.pop(context);
-                      load();
+                      loadAllData();
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text(errors.join(', '))),
@@ -139,10 +253,8 @@ class _GlobalActivitiesPageState extends State<GlobalActivitiesPage> {
     );
   }
 
-@override
+  @override
   Widget build(BuildContext context) {
-    final myActivities = items.where((e) => e.userId == widget.user.id).toList();
-
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -160,17 +272,17 @@ class _GlobalActivitiesPageState extends State<GlobalActivitiesPage> {
             : TabBarView(
                 children: [
                   _buildList(items, canEdit: false),
-                  _buildList(myActivities, canEdit: true),
+                  _buildList(usersGlobalTasks, canEdit: true),
                 ],
               ),
       ),
     );
   }
-Widget _buildList(List<UserTasksGlobal> list, {required bool canEdit}) {
+
+  Widget _buildList(List<UserTasksGlobal> list, {required bool canEdit}) {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Butonul care deschide dialogul și trimite widget.user la API
         if (canEdit) ...[
           ElevatedButton.icon(
             onPressed: _showAddDialog,
@@ -206,11 +318,18 @@ Widget _buildList(List<UserTasksGlobal> list, {required bool canEdit}) {
                   ],
                 ),
                 trailing: canEdit
-                    ? IconButton(
-                        icon: const Icon(Icons.edit, color: Colors.blue),
-                        onPressed: () {
-                          // TODO: Implementează editarea
-                        },
+                    ? Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.blue),
+                            onPressed: () => _showEditDialog(e),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _deleteTask(e),
+                          ),
+                        ],
                       )
                     : null,
               ),
