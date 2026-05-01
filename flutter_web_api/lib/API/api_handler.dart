@@ -44,26 +44,31 @@ class ApiHandler{
     }
   }
 Future<bool> updateLocation(int userId, int km) async {
-  final locationService = getLocationService();
-  final coords = await locationService.getCurrentLocation();
+  try {
+    final locationService = getLocationService();
+    final coords = await locationService.getCurrentLocation();
 
-  if (coords == null) return false;
+    if (coords == null) return false;
 
-  final uri = Uri.parse("$baseUri/location");
+    final uri = Uri.parse("$baseUri/location");
 
-  final body = {
-    "userId": userId,
-    "latitude": coords["lat"],
-    "longitude": coords["lng"],
-    "km": km,
-  };
+    final body = {
+      "userId": userId,
+      "latitude": coords["lat"],
+      "longitude": coords["lng"],
+      "km": km,
+    };
 
-  final response = await http.post(
-    uri,
-    headers: {"Content-Type": "application/json"},
-    body: jsonEncode(body),
-  );
+    final response = await http.post(
+      uri,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(body),
+    );
 
-  return response.statusCode >= 200 && response.statusCode < 300;
+    return response.statusCode >= 200 && response.statusCode < 300;
+  } catch (e) {
+    print("🚨 Eroare prinsă la updateLocation: $e");
+    return false; // Previne crash-ul
+  }
 }
 }

@@ -3,6 +3,7 @@ import 'theme/theme_controller.dart';
 import 'views/front_page.dart';
 import 'dart:io';
 
+
 void main() {
   // Add this line right here:
   HttpOverrides.global = DevHttpOverrides();
@@ -46,3 +47,5 @@ class DevHttpOverrides extends HttpOverrides {
       ..badCertificateCallback = (X509Certificate cert, String host, int port) => true;
   }
 }
+
+

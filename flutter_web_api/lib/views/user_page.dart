@@ -13,6 +13,7 @@ import '../model/user_task_global_model.dart'; // importul tău corect
 import '../API/userTasksGlobal_api.dart'; // importul tău corect
 import 'settings_page.dart';
 import 'global_activities_page.dart';
+import '../services/signal_r_service.dart';
 
 class UserPage extends StatefulWidget {
   final User user;
@@ -49,10 +50,41 @@ final UserTasksGlobalService _globalTasksService = UserTasksGlobalService();
     super.initState();
     _myTasks = List.from(widget.initialUserTasks);
     _journals = List.from(widget.initialJournals); 
-    
+    final SignalRService _signalRService = SignalRService();
     // ✅ MUST CALL FETCH DATA HERE
     _fetchData(); 
+
+    _signalRService.initSignalR(widget.user.id, (message) {
+    // Aici definim ce se întâmplă când primim mesajul
+    _showNotificationDialog(message);
+  });
+
   }
+  void _showNotificationDialog(String message) {
+  // Verificăm dacă pagina mai este activă
+  if (!mounted) return;
+
+  // Afișăm un dialog popup
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Row(
+        children: [
+          Icon(Icons.notifications_active, color: Colors.orange),
+          SizedBox(width: 10),
+          Text("Task alert!"),
+        ],
+      ),
+      content: Text(message),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("Ok"),
+        ),
+      ],
+    ),
+  );
+}
 
   // ✅ FETCH DATA USING YOUR METHODS
 Future<void> _fetchData() async {
