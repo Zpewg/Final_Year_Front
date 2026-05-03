@@ -7,7 +7,8 @@ import '../API/notification_enabled_service.dart';
 import '../model/notification_enabled_model.dart';
 import '../model/notification_lead_time_model.dart';
 import '../API/notification_lead_time_service.dart';
-
+import '../API/task_suggestion_service.dart';
+import '../model/task_suggestion_model.dart';
 class SettingsPage extends StatefulWidget {
   final User user;
   const SettingsPage({super.key, required this.user});
@@ -24,10 +25,15 @@ class _SettingsPageState extends State<SettingsPage> {
   final NotificationLeadTimeService _leadTimeService =
       NotificationLeadTimeService();
   List<NotificationLeadTime> _leadTimes = []; // Lista noastră de alerte
+
+  bool _suggestionsEnabled = false;
+  int? _currentSuggestionId;
+  final TaskSuggestionService _suggestionService = TaskSuggestionService();
   @override
   void initState() {
     super.initState();
     _loadNotificationStatus();
+    _loadSuggestionStatus();
   }
 
   // Extragem statusul din baza de date la inițializare
@@ -46,6 +52,15 @@ class _SettingsPageState extends State<SettingsPage> {
           _refreshLeadTimes();
         }
       }
+    }
+  }
+  Future<void> _loadSuggestionStatus() async {
+    final suggestions = await _suggestionService.getSuggestions(widget.user.id);
+    if (mounted && suggestions.isNotEmpty) {
+      setState(() {
+        _suggestionsEnabled = suggestions.first.isEnabled;
+        _currentSuggestionId = suggestions.first.taskSuggestionId;
+      });
     }
   }
 
@@ -287,6 +302,40 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ),
             ],
+
+            const Divider(),
+
+            SwitchListTile(
+              secondary: const Icon(Icons.psychology, color: Colors.purple), // O iconiță sugestivă
+              title: const Text("Enable Task Suggestions"),
+              subtitle: const Text("Let the app analyze and suggest daily tasks."),
+              value: _suggestionsEnabled,
+              onChanged: (bool value) async {
+                setState(() => _suggestionsEnabled = value);
+
+                final suggestion = TaskSuggestion(
+                  taskSuggestionId: _currentSuggestionId,
+                  userId: widget.user.id,
+                  isEnabled: value,
+                );
+
+                // Apelăm API-ul exact cum ai cerut
+                final response = value
+                    ? await _suggestionService.enableSuggestion(suggestion)
+                    : await _suggestionService.disableSuggestion(suggestion);
+
+                // Dacă response e null înseamnă că a dat eroare (din cum am scris API-ul de Flutter anterior)
+                if (response == null && mounted) {
+                  setState(() => _suggestionsEnabled = !value); // Revert UI
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Failed to save suggestion preferences.")),
+                  );
+                } else if (response != null && value == true) {
+                  // Reîncărcăm pentru a prelua noul ID din baza de date
+                  _loadSuggestionStatus();
+                }
+              },
+            ),
 
             const Divider(),
 
